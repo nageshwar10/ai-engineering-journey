@@ -21,6 +21,9 @@ on:
           - 03_lists.py
           - 04_tuples.py
 
+permissions:
+  contents: read
+
 jobs:
   run-program:
     name: Execute Selected Program
@@ -29,10 +32,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -62,48 +65,51 @@ jobs:
           fi
 
       - name: Execute Python Program
+        id: execute
         env:
           SELECTED_FOLDER: ${{ inputs.folder }}
           SELECTED_FILE: ${{ inputs.file }}
         run: |
-          set -o pipefail
-
-          echo ""
           echo "=================================================="
           echo "             PYTHON PROGRAM EXECUTION"
           echo "=================================================="
+
+          echo "Folder  : $SELECTED_FOLDER"
+          echo "File    : $SELECTED_FILE"
+          echo "Python  : $(python --version)"
+          echo "Runner  : ubuntu-latest"
+
           echo ""
-          echo "Folder       : $SELECTED_FOLDER"
-          echo "File         : $SELECTED_FILE"
-          echo "Python       : $(python --version)"
-          echo "Runner       : GitHub Hosted Ubuntu"
-          echo ""
-          echo "--------------------------------------------------"
-          echo "                  PROGRAM OUTPUT"
-          echo "--------------------------------------------------"
+          echo "--------------- PROGRAM OUTPUT ------------------"
           echo ""
 
-          if python -u "$SELECTED_FOLDER/$SELECTED_FILE"; then
-            echo ""
-            echo "--------------------------------------------------"
-            echo "Execution Status : SUCCESS"
-            echo "--------------------------------------------------"
+          set +e
+          python -u "$SELECTED_FOLDER/$SELECTED_FILE" 2>&1 | tee program-output.txt
+          PROGRAM_EXIT_CODE=${PIPESTATUS[0]}
+          set -e
+
+          echo "PROGRAM_EXIT_CODE=$PROGRAM_EXIT_CODE" >> "$GITHUB_ENV"
+
+          echo ""
+          echo "--------------------------------------------------"
+
+          if [ "$PROGRAM_EXIT_CODE" -eq 0 ]; then
+            echo "Execution Status: SUCCESS"
           else
-            STATUS=$?
-            echo ""
-            echo "::error::Python program execution failed with exit code $STATUS"
-            echo "Execution Status : FAILED"
-            exit "$STATUS"
+            echo "::error::Program failed with exit code $PROGRAM_EXIT_CODE"
+            echo "Execution Status: FAILED"
           fi
 
-      - name: Execution Summary
+          exit "$PROGRAM_EXIT_CODE"
+
+      - name: Publish Execution Summary
         if: always()
         env:
           SELECTED_FOLDER: ${{ inputs.folder }}
           SELECTED_FILE: ${{ inputs.file }}
         run: |
           {
-            echo "## Python Program Execution"
+            echo "# Python Program Execution"
             echo ""
             echo "| Property | Value |"
             echo "|---|---|"
@@ -112,9 +118,34 @@ jobs:
             echo "| Runner | ubuntu-latest |"
             echo "| Python | 3.12 |"
             echo ""
-            if [ "${{ job.status }}" = "success" ]; then
-              echo "### Execution completed successfully"
+
+            if [ "${PROGRAM_EXIT_CODE:-not-run}" = "0" ]; then
+              echo "## Execution Status: SUCCESS"
+            elif [ "${PROGRAM_EXIT_CODE:-not-run}" = "not-run" ]; then
+              echo "## Execution Status: NOT EXECUTED"
             else
-              echo "### Execution failed"
+              echo "## Execution Status: FAILED"
+              echo ""
+              echo "Exit code: \`$PROGRAM_EXIT_CODE\`"
             fi
+
+            echo ""
+            echo "## Program Output"
+            echo ""
+            echo "<details open>"
+            echo "<summary>View Python execution output</summary>"
+            echo ""
+            echo '```text'
+
+            if [ -f program-output.txt ]; then
+              head -c 50000 program-output.txt
+              echo ""
+            else
+              echo "No program output was captured."
+            fi
+
+            echo '```'
+            echo ""
+            echo "</details>"
+
           } >> "$GITHUB_STEP_SUMMARY"
