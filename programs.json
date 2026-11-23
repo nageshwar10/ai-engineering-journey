@@ -1,0 +1,8 @@
+{
+  "Python": [
+    "01_variables.py",
+    "02_operators.py",
+    "03_lists.py",
+    "04_tuples.py"
+  ]
+}
