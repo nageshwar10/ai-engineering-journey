@@ -1,0 +1,120 @@
+
+name: Run Selected Program
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: "Select the folder"
+        required: true
+        type: choice
+        options:
+          - Python
+
+      file:
+        description: "Select the Python file"
+        required: true
+        type: choice
+        options:
+          - 01_variables.py
+          - 02_operators.py
+          - 03_lists.py
+          - 04_tuples.py
+
+jobs:
+  run-program:
+    name: Execute Selected Program
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate selected program
+        env:
+          SELECTED_FOLDER: ${{ inputs.folder }}
+          SELECTED_FILE: ${{ inputs.file }}
+        run: |
+          set -e
+
+          case "$SELECTED_FOLDER/$SELECTED_FILE" in
+            Python/01_variables.py|\
+            Python/02_operators.py|\
+            Python/03_lists.py|\
+            Python/04_tuples.py)
+              echo "Program selection is valid."
+              ;;
+            *)
+              echo "::error::Invalid program selection."
+              exit 1
+              ;;
+          esac
+
+          if [ ! -f "$SELECTED_FOLDER/$SELECTED_FILE" ]; then
+            echo "::error::Selected file does not exist."
+            exit 1
+          fi
+
+      - name: Execute Python Program
+        env:
+          SELECTED_FOLDER: ${{ inputs.folder }}
+          SELECTED_FILE: ${{ inputs.file }}
+        run: |
+          set -o pipefail
+
+          echo ""
+          echo "=================================================="
+          echo "             PYTHON PROGRAM EXECUTION"
+          echo "=================================================="
+          echo ""
+          echo "Folder       : $SELECTED_FOLDER"
+          echo "File         : $SELECTED_FILE"
+          echo "Python       : $(python --version)"
+          echo "Runner       : GitHub Hosted Ubuntu"
+          echo ""
+          echo "--------------------------------------------------"
+          echo "                  PROGRAM OUTPUT"
+          echo "--------------------------------------------------"
+          echo ""
+
+          if python -u "$SELECTED_FOLDER/$SELECTED_FILE"; then
+            echo ""
+            echo "--------------------------------------------------"
+            echo "Execution Status : SUCCESS"
+            echo "--------------------------------------------------"
+          else
+            STATUS=$?
+            echo ""
+            echo "::error::Python program execution failed with exit code $STATUS"
+            echo "Execution Status : FAILED"
+            exit "$STATUS"
+          fi
+
+      - name: Execution Summary
+        if: always()
+        env:
+          SELECTED_FOLDER: ${{ inputs.folder }}
+          SELECTED_FILE: ${{ inputs.file }}
+        run: |
+          {
+            echo "## Python Program Execution"
+            echo ""
+            echo "| Property | Value |"
+            echo "|---|---|"
+            echo "| Folder | \`$SELECTED_FOLDER\` |"
+            echo "| File | \`$SELECTED_FILE\` |"
+            echo "| Runner | ubuntu-latest |"
+            echo "| Python | 3.12 |"
+            echo ""
+            if [ "${{ job.status }}" = "success" ]; then
+              echo "### Execution completed successfully"
+            else
+              echo "### Execution failed"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
