@@ -25,12 +25,12 @@ jobs:
       - name: Install Ruff
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          python -m pip install ruff
 
       - name: Discover Python Files
         id: discover
         run: |
-          FILE_COUNT=$(find Python -type f -name "*.py" | wc -l)
+          FILE_COUNT=$(find Python -type f -name "*.py" | wc -l | tr -d ' ')
 
           echo "Found $FILE_COUNT Python files"
 
@@ -47,15 +47,16 @@ jobs:
         run: |
           echo "Checking Python syntax..."
 
-          python -m compileall -q -f Python \
-            > syntax-output.txt 2>&1
-
+          set +e
+          python -m compileall -q -f Python > syntax-output.txt 2>&1
           RESULT=$?
+          set -e
+
+          cat syntax-output.txt
 
           if [ "$RESULT" -eq 0 ]; then
             echo "Syntax check passed."
           else
-            cat syntax-output.txt
             echo "::error::Python syntax errors detected"
           fi
 
@@ -67,18 +68,19 @@ jobs:
         run: |
           echo "Running Ruff lint checks..."
 
-          ruff check Python \
-            --output-format=github \
-            > lint-output.txt 2>&1
-
+          set +e
+          ruff check Python --output-format=full > lint-output.txt 2>&1
           RESULT=$?
+          set -e
 
           cat lint-output.txt
 
           if [ "$RESULT" -eq 0 ]; then
             echo "Lint check passed."
+          elif [ "$RESULT" -eq 1 ]; then
+            echo "::error::Python lint violations detected"
           else
-            echo "::error::Python lint issues detected"
+            echo "::error::Ruff execution or configuration error"
           fi
 
           exit "$RESULT"
@@ -104,28 +106,22 @@ jobs:
             echo ""
             echo '```text'
 
-            if [ -f syntax-output.txt ]; then
+            if [ -s syntax-output.txt ]; then
               cat syntax-output.txt
-              if [ ! -s syntax-output.txt ]; then
-                echo "No syntax errors found."
-              fi
             else
-              echo "Syntax check was not executed."
+              echo "No syntax errors found."
             fi
 
             echo '```'
             echo ""
-            echo "## Lint Check Output"
+            echo "## Ruff Lint Output"
             echo ""
             echo '```text'
 
-            if [ -f lint-output.txt ]; then
+            if [ -s lint-output.txt ]; then
               cat lint-output.txt
-              if [ ! -s lint-output.txt ]; then
-                echo "No lint issues found."
-              fi
             else
-              echo "Lint check was not executed."
+              echo "No lint issues found."
             fi
 
             echo '```'
