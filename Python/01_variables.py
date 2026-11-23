@@ -68,7 +68,7 @@ coordinates = (12.97, 77.59)
 # Stores unique values without duplicates.
 # ==========================================================
 
-certifications = {"AWS", "CKA", "Terraform", "AWS"}
+certifications = {"AWS", "CKA", "Terraform", "GCP"}
 
 # ==========================================================
 # 9. DICTIONARY VARIABLE (dict)
