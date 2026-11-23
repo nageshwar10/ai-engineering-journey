@@ -45,7 +45,7 @@ employee = ["Nagesh", 28, "DevOps Engineer", 5, True]
 empty_list = []
 
 # Using the list constructor
-languages = list(("Python", "Java", "Go"))
+languages = ["Python", "Java", "Go"]
 
 print("Skills:", skills)
 print("Numbers:", numbers)
