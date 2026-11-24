@@ -1,0 +1,15 @@
+
+# MySQL configuration
+MYSQL_HOST=db
+MYSQL_PORT=3306
+MYSQL_DATABASE=shortener
+MYSQL_USER=shortener
+MYSQL_PASSWORD=shortener_pass
+MYSQL_ROOT_PASSWORD=root_dev_password
+
+# Database connection URL
+DATABASE_URL=mysql+pymysql://shortener:shortener_pass@db:3306/shortener
+
+# Application configuration
+BASE_URL=http://localhost:8000
+CODE_LENGTH=7
